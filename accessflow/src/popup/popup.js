@@ -1,25 +1,21 @@
-import { processText, displayProcessedText, processWithMode } from '../utils/dom.js';
-import { initSettingsPanel } from './settings.js';
+import { processText, displayProcessedText } from '../utils/dom.js';
+import { initSettingsPanel } from './settings-ui.js';  // Updated import path
 import { loadSettings, applySettings } from '../utils/settings.js';
-import { getApiKey, saveApiKey, verifyApiKey } from '../utils/api.js';
+import { getApiKey } from '../utils/api.js';
 import SpeechHandler from '../utils/speech.js';
 
 // Initialize speech handler
 const speechHandler = new SpeechHandler();
 
 document.addEventListener('DOMContentLoaded', async function() {
-  // Handle dark mode toggle
+  // Dark mode toggle
   const darkModeToggle = document.getElementById('dark-mode-toggle');
-  
   if (darkModeToggle) {
-    // Check for saved theme preference or use system preference
     const savedTheme = localStorage.getItem('accessflow-theme');
     if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.body.classList.add('dark-mode');
       darkModeToggle.checked = true;
     }
-    
-    // Handle theme switch
     darkModeToggle.addEventListener('change', () => {
       if (darkModeToggle.checked) {
         document.body.classList.add('dark-mode');
@@ -31,50 +27,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // Handle tab switching
-  const tabs = document.querySelectorAll('.accessflow-tab');
-  if (tabs) {
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        // Remove active class from all tabs and sections
-        document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-        
-        // Add active class to clicked tab and corresponding section
-        tab.classList.add('active');
-        const tabName = tab.dataset.tab;
-        const section = document.getElementById(`${tabName}-section`);
-        if (section) section.classList.add('active');
-      });
-    });
-  }
-
-  // Initialize settings panel
-  await initSettingsPanel();
-  
-  // Check if we should open settings tab directly (from welcome page)
-  chrome.storage.local.get('accessflow_open_settings', (result) => {
-    if (result.accessflow_open_settings) {
-      // Switch to settings tab
+  // Tab switching
+  document.querySelectorAll('.accessflow-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      // ...existing tab switch code...
       document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-      
-      const settingsTab = document.querySelector('.accessflow-tab[data-tab="settings"]');
-      const settingsSection = document.getElementById('settings-section');
-      
-      if (settingsTab) settingsTab.classList.add('active');
-      if (settingsSection) settingsSection.classList.add('active');
-      
-      // Clear the flag
+      tab.classList.add('active');
+      const tabName = tab.dataset.tab;
+      const section = document.getElementById(`${tabName}-section`);
+      if (section) section.classList.add('active');
+    });
+  });
+
+  // Initialize settings panel
+  await initSettingsPanel(speechHandler);
+  
+  // Switch to settings tab if needed
+  chrome.storage.local.get('accessflow_open_settings', (result) => {
+    if (result.accessflow_open_settings) {
+      // ...existing switch tab code...
       chrome.storage.local.remove('accessflow_open_settings');
     }
   });
   
-  // Check if API key is set
+  // Set API key status visibility
   const apiKey = await getApiKey();
   const apiKeyMissing = document.getElementById('api-key-missing');
   const processControls = document.getElementById('process-controls');
-  
   if (!apiKey && apiKeyMissing && processControls) {
     apiKeyMissing.style.display = 'block';
     processControls.style.display = 'none';
@@ -83,71 +63,120 @@ document.addEventListener('DOMContentLoaded', async function() {
     processControls.style.display = 'block';
   }
   
-  // Go to settings button
+  // ...existing settings-button code...
   const gotoSettings = document.getElementById('goto-settings');
   if (gotoSettings) {
     gotoSettings.addEventListener('click', () => {
-      document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-      
-      const settingsTab = document.querySelector('.accessflow-tab[data-tab="settings"]');
-      const settingsSection = document.getElementById('settings-section');
-      
-      if (settingsTab) settingsTab.classList.add('active');
-      if (settingsSection) settingsSection.classList.add('active');
+      // ...switch to settings tab...
     });
   }
   
-  // Check for stored text from background script
+  // Load text passed from background
   chrome.storage.local.get('accessflow_selected_text', (result) => {
     if (result.accessflow_selected_text) {
       const inputText = document.getElementById('input-text');
       if (inputText) {
         inputText.value = result.accessflow_selected_text;
-        // Clear stored text
         chrome.storage.local.remove('accessflow_selected_text');
       }
     }
   });
   
-  // Load user settings
+  // Load user settings and apply
   const settings = await loadSettings();
   applySettings(settings, document.body);
   
-  // Set up simplify button
-  const simplifyBtn = document.getElementById('simplify-btn');
-  if (simplifyBtn) {
-    simplifyBtn.addEventListener('click', async () => {
-      processWithMode('simplify', settings);
-    });
-  }
+  // Set up processing buttons
+  document.getElementById('simplify-btn')?.addEventListener('click', async () => {
+    await processTextWithMode('simplify');
+  });
+  document.getElementById('summarize-btn')?.addEventListener('click', async () => {
+    await processTextWithMode('summarize');
+  });
   
-  // Set up summarize button
-  const summarizeBtn = document.getElementById('summarize-btn');
-  if (summarizeBtn) {
-    summarizeBtn.addEventListener('click', async () => {
-      processWithMode('summarize', settings);
-    });
-  }
-  
-  // Handle keyboard shortcuts
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    // Alt+S - Simplify
     if (e.altKey && e.key.toLowerCase() === 's') {
       e.preventDefault();
-      processWithMode('simplify', settings);
+      processTextWithMode('simplify');
     }
-    
-    // Alt+M - Summarize
     if (e.altKey && e.key.toLowerCase() === 'm') {
       e.preventDefault();
-      processWithMode('summarize', settings);
+      processTextWithMode('summarize');
     }
   });
   
-  // Set up read aloud functionality
   setupReadAloud(settings);
 });
+
+/**
+ * Process text with the selected mode and update UI
+ * @param {string} mode - The processing mode (simplify or summarize)
+ */
+async function processTextWithMode(mode) {
+  const settings = await loadSettings();
+  const text = document.getElementById('input-text').value.trim();
+  if (!text) {
+    document.getElementById('output-text').innerHTML = `
+      <div class="accessflow-error">
+        Please enter some text to ${mode === 'simplify' ? 'simplify' : 'summarize'}.
+      </div>
+    `;
+    return;
+  }
+  
+  const buttonId = `${mode}-btn`;
+  const button = document.getElementById(buttonId);
+  const outputText = document.getElementById('output-text');
+  const keyConcepts = document.getElementById('key-concepts');
+  
+  try {
+    // Show processing state
+    if (button) button.disabled = true;
+    if (button) button.innerHTML = `
+      <div class="accessflow-mini-loading"></div>
+      Processing...
+    `;
+    if (outputText) outputText.innerHTML = '<div class="accessflow-loading"></div>';
+    if (keyConcepts) keyConcepts.innerHTML = '';
+    
+    // Process text
+    const result = await processText(text, mode, settings.simplificationLevel);
+    const outputContainer = document.getElementById('output-container');
+    
+    // Display processed text
+    displayProcessedText(result, outputContainer, outputText, keyConcepts);
+    
+    // Setup read aloud functionality
+    setupReadAloudForText(outputText);
+    
+  } catch (error) {
+    if (outputText) {
+      outputText.innerHTML = `
+        <div class="accessflow-error">
+          ${error.message || `Failed to ${mode} text. Please try again later.`}
+        </div>
+      `;
+    }
+    if (keyConcepts) keyConcepts.innerHTML = '';
+  } finally {
+    // Reset button state
+    if (button) {
+      button.disabled = false;
+      if (mode === 'simplify') {
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M13 16.172l-3.536-3.536 1.415-1.414 2.12 2.122 5.657-5.657 1.414 1.414L13 16.172zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/></svg>
+          Simplify
+        `;
+      } else {
+        button.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 15h14v2H3v-2zm0-5h18v2H3v-2zm0-5h14v2H3V9z"/></svg>
+          Summarize
+        `;
+      }
+    }
+  }
+}
 
 /**
  * Set up read aloud functionality
@@ -181,236 +210,64 @@ function setupReadAloud(settings) {
 }
 
 /**
- * Initialize the settings panel
+ * Setup read aloud functionality for a specific text element
+ * @param {Element} textElement - The text element to read
  */
-async function initSettingsPanel() {
-  const settingsContainer = document.getElementById('settings-container');
-  if (!settingsContainer) return;
+function setupReadAloudForText(textElement) {
+  if (!textElement || !textElement.textContent.trim()) return;
   
-  const settings = await loadSettings();
+  // Remove any existing read aloud buttons
+  const existingButtons = document.querySelectorAll('.accessflow-read-aloud-btn, .accessflow-stop-btn');
+  existingButtons.forEach(btn => btn.remove());
   
-  // Create settings UI
-  settingsContainer.innerHTML = `
-    <h2>Settings</h2>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="apiKey">Gemini API Key</label>
-      <input type="password" id="apiKey" class="setting-control" placeholder="Enter your Gemini API key">
-      <p class="setting-help">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></p>
-      <button id="saveApiKey" class="accessflow-button">Save API Key</button>
-      <div id="api-key-status"></div>
-    </div>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="simplificationLevel">Simplification Level</label>
-      <select id="simplificationLevel" class="setting-control">
-        <option value="easy" ${settings.simplificationLevel === 'easy' ? 'selected' : ''}>Easy (simpler words and shorter sentences)</option>
-        <option value="moderate" ${settings.simplificationLevel === 'moderate' ? 'selected' : ''}>Moderate (balanced simplification)</option>
-        <option value="minimal" ${settings.simplificationLevel === 'minimal' ? 'selected' : ''}>Minimal (light clarification only)</option>
-      </select>
-    </div>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="fontFamily">Font Family</label>
-      <select id="fontFamily" class="setting-control">
-        <option value="default" ${settings.fontFamily === 'default' ? 'selected' : ''}>Default</option>
-        <option value="serif" ${settings.fontFamily === 'serif' ? 'selected' : ''}>Serif (Georgia, Times)</option>
-        <option value="sans-serif" ${settings.fontFamily === 'sans-serif' ? 'selected' : ''}>Sans-serif (Arial, Helvetica)</option>
-        <option value="monospace" ${settings.fontFamily === 'monospace' ? 'selected' : ''}>Monospace (Consolas, Courier)</option>
-      </select>
-    </div>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="fontSize">Font Size: ${settings.fontSize}px</label>
-      <input type="range" id="fontSize" min="12" max="24" step="1" value="${settings.fontSize}" class="setting-control">
-    </div>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="lineSpacing">Line Spacing</label>
-      <select id="lineSpacing" class="setting-control">
-        <option value="tight" ${settings.lineSpacing === 'tight' ? 'selected' : ''}>Tight</option>
-        <option value="normal" ${settings.lineSpacing === 'normal' ? 'selected' : ''}>Normal</option>
-        <option value="loose" ${settings.lineSpacing === 'loose' ? 'selected' : ''}>Loose</option>
-      </select>
-    </div>
-    
-    <div class="setting-group">
-      <label class="setting-label" for="readAloudSpeed">Read Aloud Speed: ${settings.readAloudSpeed}x</label>
-      <input type="range" id="readAloudSpeed" min="0.5" max="2" step="0.1" value="${settings.readAloudSpeed}" class="setting-control">
-    </div>
-    
-    <div class="settings-buttons">
-      <button id="saveSettings" class="accessflow-button">Save Settings</button>
-      <button id="resetSettings" class="accessflow-button secondary">Reset to Defaults</button>
-    </div>
+  // Create read aloud button
+  const readBtn = document.createElement('button');
+  readBtn.className = 'accessflow-read-aloud-btn';
+  readBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+      <path fill="none" d="M0 0h24v24H0z"/>
+      <path d="M5.889 16H2a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h3.889l5.294-4.332a.5.5 0 0 1 .817.387v15.89a.5.5 0 0 1-.817.387L5.89 16zm13.517 4.134l-1.416-1.416A8.978 8.978 0 0 0 21 12a8.982 8.982 0 0 0-3.304-6.968l1.42-1.42A10.976 10.976 0 0 1 23 12c0 3.223-1.386 6.122-3.594 8.134z"/>
+    </svg>
+    Read Aloud
   `;
+  readBtn.setAttribute('aria-label', 'Read text aloud');
   
-  // Get API key and populate field
-  const apiKey = await getApiKey();
-  const apiKeyInput = document.getElementById('apiKey');
-  if (apiKeyInput && apiKey) {
-    apiKeyInput.value = '********';
-  }
+  // Create stop button
+  const stopBtn = document.createElement('button');
+  stopBtn.className = 'accessflow-stop-btn';
+  stopBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+      <path fill="none" d="M0 0h24v24H0z"/>
+      <path d="M6 5h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>
+    </svg>
+    Stop
+  `;
+  stopBtn.setAttribute('aria-label', 'Stop reading');
+  stopBtn.style.display = 'none';
   
-  // Save API key
-  const saveApiKeyBtn = document.getElementById('saveApiKey');
-  if (saveApiKeyBtn) {
-    saveApiKeyBtn.addEventListener('click', async () => {
-      const apiKeyInput = document.getElementById('apiKey');
-      const apiKeyStatus = document.getElementById('api-key-status');
-      
-      if (!apiKeyInput || !apiKeyStatus) return;
-      
-      const newApiKey = apiKeyInput.value.trim();
-      
-      if (!newApiKey) {
-        apiKeyStatus.innerHTML = '<span class="status-error">Please enter an API key</span>';
-        return;
-      }
-      
-      apiKeyStatus.innerHTML = 'Verifying API key...';
-      
-      try {
-        const isValid = await verifyApiKey(newApiKey);
-        
-        if (isValid) {
-          await saveApiKey(newApiKey);
-          apiKeyStatus.innerHTML = '<span class="status-success">API key saved successfully</span>';
-          
-          // Update the API key missing notice if present
-          const apiKeyMissingNotice = document.getElementById('api-key-missing');
-          const processControls = document.getElementById('process-controls');
-          
-          if (apiKeyMissingNotice && processControls) {
-            apiKeyMissingNotice.style.display = 'none';
-            processControls.style.display = 'block';
-          }
-        } else {
-          apiKeyStatus.innerHTML = '<span class="status-error">Invalid API key</span>';
-        }
-      } catch (error) {
-        apiKeyStatus.innerHTML = '<span class="status-error">Error verifying API key</span>';
-        console.error('API key verification error:', error);
-      }
-    });
-  }
+  // Add event listeners
+  readBtn.addEventListener('click', () => {
+    readBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+    speechHandler.speak(textElement);
+  });
   
-  // Update font size label when slider changes
-  const fontSizeSlider = document.getElementById('fontSize');
-  if (fontSizeSlider) {
-    fontSizeSlider.addEventListener('input', () => {
-      const label = document.querySelector('label[for="fontSize"]');
-      if (label) {
-        label.textContent = `Font Size: ${fontSizeSlider.value}px`;
-      }
-    });
-  }
+  stopBtn.addEventListener('click', () => {
+    stopBtn.style.display = 'none';
+    readBtn.style.display = 'inline-block';
+    speechHandler.stop();
+  });
   
-  // Update read aloud speed label when slider changes
-  const readAloudSpeedSlider = document.getElementById('readAloudSpeed');
-  if (readAloudSpeedSlider) {
-    readAloudSpeedSlider.addEventListener('input', () => {
-      const label = document.querySelector('label[for="readAloudSpeed"]');
-      if (label) {
-        label.textContent = `Read Aloud Speed: ${readAloudSpeedSlider.value}x`;
-      }
-    });
-  }
-  
-  // Save settings
-  const saveSettingsBtn = document.getElementById('saveSettings');
-  if (saveSettingsBtn) {
-    saveSettingsBtn.addEventListener('click', async () => {
-      const newSettings = {
-        simplificationLevel: document.getElementById('simplificationLevel')?.value || settings.simplificationLevel,
-        fontSize: parseInt(document.getElementById('fontSize')?.value || settings.fontSize),
-        fontFamily: document.getElementById('fontFamily')?.value || settings.fontFamily,
-        lineSpacing: document.getElementById('lineSpacing')?.value || settings.lineSpacing,
-        readAloudSpeed: parseFloat(document.getElementById('readAloudSpeed')?.value || settings.readAloudSpeed),
-        darkMode: document.body.classList.contains('dark-mode')
-      };
-      
-      try {
-        await saveSettings(newSettings);
-        const feedback = document.createElement('div');
-        feedback.className = 'accessflow-feedback';
-        feedback.textContent = 'Settings saved successfully';
-        document.body.appendChild(feedback);
-        
-        setTimeout(() => {
-          feedback.remove();
-        }, 3000);
-        
-        // Apply settings immediately
-        applySettings(newSettings, document.body);
-        
-        // Update speech handler options
-        speechHandler.setOptions({ rate: newSettings.readAloudSpeed });
-      } catch (error) {
-        console.error('Error saving settings:', error);
-      }
-    });
-  }
-  
-  // Reset settings
-  const resetSettingsBtn = document.getElementById('resetSettings');
-  if (resetSettingsBtn) {
-    resetSettingsBtn.addEventListener('click', async () => {
-      try {
-        await saveSettings(DEFAULT_SETTINGS);
-        
-        // Reset UI to defaults
-        const simplificationLevel = document.getElementById('simplificationLevel');
-        if (simplificationLevel) {
-          simplificationLevel.value = DEFAULT_SETTINGS.simplificationLevel;
-        }
-        
-        const fontSize = document.getElementById('fontSize');
-        if (fontSize) {
-          fontSize.value = DEFAULT_SETTINGS.fontSize;
-          const label = document.querySelector('label[for="fontSize"]');
-          if (label) {
-            label.textContent = `Font Size: ${DEFAULT_SETTINGS.fontSize}px`;
-          }
-        }
-        
-        const fontFamily = document.getElementById('fontFamily');
-        if (fontFamily) {
-          fontFamily.value = DEFAULT_SETTINGS.fontFamily;
-        }
-        
-        const lineSpacing = document.getElementById('lineSpacing');
-        if (lineSpacing) {
-          lineSpacing.value = DEFAULT_SETTINGS.lineSpacing;
-        }
-        
-        const readAloudSpeed = document.getElementById('readAloudSpeed');
-        if (readAloudSpeed) {
-          readAloudSpeed.value = DEFAULT_SETTINGS.readAloudSpeed;
-          const label = document.querySelector('label[for="readAloudSpeed"]');
-          if (label) {
-            label.textContent = `Read Aloud Speed: ${DEFAULT_SETTINGS.readAloudSpeed}x`;
-          }
-        }
-        
-        // Apply default settings
-        applySettings(DEFAULT_SETTINGS, document.body);
-        
-        // Update speech handler options
-        speechHandler.setOptions({ rate: DEFAULT_SETTINGS.readAloudSpeed });
-        
-        // Show feedback
-        const feedback = document.createElement('div');
-        feedback.className = 'accessflow-feedback';
-        feedback.textContent = 'Settings reset to defaults';
-        document.body.appendChild(feedback);
-        
-        setTimeout(() => {
-          feedback.remove();
-        }, 3000);
-      } catch (error) {
-        console.error('Error resetting settings:', error);
-      }
-    });
+  // Add buttons to the DOM
+  const outputContainer = document.getElementById('output-container');
+  if (outputContainer) {
+    outputContainer.insertBefore(stopBtn, textElement);
+    outputContainer.insertBefore(readBtn, textElement);
+  } else {
+    const parent = textElement.parentNode;
+    if (parent) {
+      parent.insertBefore(stopBtn, textElement);
+      parent.insertBefore(readBtn, textElement);
+    }
   }
 }

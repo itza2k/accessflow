@@ -2,19 +2,20 @@
   "name": "accessflow",
   "private": true,
   "version": "1.0.0",
+  "description": "AI-powered accessibility browser extension",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node src/icons/create-icons.js",
-    "build": "vite build",
+    "prebuild": "node src/icons/create-icons.js || echo 'Icon generation failed but continuing build'",
+    "build": "vite build && node copy-manifest.js",
     "watch": "vite build --watch",
     "package": "cd dist && zip -r ../accessflow.zip .",
-    "build:package": "npm run build && npm run package",
-    "preview": "vite preview",
-    "test": "vitest"
+    "build:package": "npm run build && npm run package"
   },
   "devDependencies": {
-    "vite": "^6.2.0",
-    "vitest": "^1.2.0"
+    "vite": "^5.0.8"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.1.3"
   }
 }

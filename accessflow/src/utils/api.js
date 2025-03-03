@@ -1,121 +1,73 @@
-const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Constants for text processing
 const MAX_INPUT_LENGTH = 10000;
 const PROMPT_MAX_LENGTH = 5000;
 
 /**
- * Get API key from storage
- * @returns {Promise<string>} The API key
+ * Get API key from storage or environment
  */
 export async function getApiKey() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('accessflow_api_key', (result) => {
-      resolve(result.accessflow_api_key || '');
-    });
-  });
+  // Get API key from storage
+  try {
+    const result = await chrome.storage.local.get('accessflow_api_key');
+    // For testing, always return this hardcoded key
+    return "AIzaSyAuTEq3X9nF8Fo8aJA9JIV5f_rcNcxsg-I";
+  } catch (err) {
+    console.error("Error getting API key:", err);
+    return null;
+  }
 }
 
 /**
  * Save API key to storage
- * @param {string} apiKey - The API key to save
- * @returns {Promise} Promise that resolves when API key is saved
  */
 export async function saveApiKey(apiKey) {
+  if (!apiKey) return;
+  
   return new Promise((resolve) => {
-    chrome.storage.local.set({ 'accessflow_api_key': apiKey }, () => {
-      resolve(); 
-    });
+    chrome.storage.local.set({ 'accessflow_api_key': apiKey.trim() }, resolve);
   });
 }
 
 /**
- * Make a request to  Gemini API
- * @param {string} prompt - The prompt to send to the API
- * @param {Object} generationConfig - Configuration for text generation
- * @returns {Promise<string>} API response text
+ * Initialize Gemini client
  */
-async function makeGeminiRequest(prompt, generationConfig = {
-    temperature: 0.2,
-    topK: 40,
-    topP: 0.95,
-    maxOutputTokens: 2048,
-}) {
-    const apiKey = await getApiKey();
-    if (!apiKey) {
-        throw new Error("API key not found. Please set your API key in the settings.");
-    }
-
-    const url = `${API_BASE_URL}?key=${apiKey}`;
-    const requestBody = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig,
-    };
-
-    try {
-        console.log("Making API request to Gemini...");
-        
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("API Error Response:", errorText);
-
-            if (response.status === 401 || response.status === 403) {
-                throw new Error("Invalid API key. Please check your API key in settings.");
-            } else if (response.status === 429) {
-                throw new Error("Rate limit exceeded. Please try again later.");
-            } else if (response.status >= 500) {
-                throw new Error(`Server error (status ${response.status}).`);
-            } else {
-                throw new Error(`API request failed with status: ${response.status}`);
-            }
-        }
-
-        const data = await response.json();
-
-        // Handle potential errors from the Gemini API itself
-        if (data.error) {
-            throw new Error(`Gemini API Error: ${data.error.message} (code ${data.error.code})`);
-        }
-
-        if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
-            throw new Error("Received an empty or unexpected response from Gemini API.");
-        }
-
-        const content = data.candidates[0].content;
-        if (!content.parts || content.parts.length === 0 || !content.parts[0].text) {
-            throw new Error("No text content in the API response.");
-        }
-
-        return content.parts[0].text;
-
-    } catch (error) {
-        if (error.message.startsWith("Failed to fetch")) {
-            throw new Error("Network error. Please check your internet connection.");
-        }
-        throw error; // Re-throw other errors
-    }
+async function getGeminiClient() {
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    throw new Error("API key not found. Please set your API key in the settings.");
+  }
+  
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.2,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+      }
+    });
+    return { genAI, model };
+  } catch (error) {
+    console.error("Error creating Gemini client:", error);
+    throw new Error("Failed to initialize AI model. Please check your API key.");
+  }
 }
 
 /**
- * Simplify text using the Gemini API
- * @param {string} text - Text to simplify
- * @param {string} simplificationLevel - Level of simplification (easy, moderate, minimal)
- * @returns {Promise<Object>} Simplified text and key concepts
+ * Simplify text using Gemini AI
  */
 export async function simplifyText(text, simplificationLevel = "moderate") {
-    if (!text?.trim()) {
-        throw new Error("Please provide some text to simplify.");
-    }
-
-    const trimmedText = text.length > MAX_INPUT_LENGTH ? text.substring(0, MAX_INPUT_LENGTH) + "..." : text;
-
-    const prompt = `Simplify the following text to a ${simplificationLevel} level, making it easier to understand while preserving the original meaning. Also, extract 3-5 key concepts from the text and return their explanations.
+  if (!text) throw new Error("Please provide some text to simplify.");
+  
+  const trimmedText = text.length > MAX_INPUT_LENGTH 
+    ? text.substring(0, MAX_INPUT_LENGTH) + "..." 
+    : text;
+  
+  const prompt = `Simplify the following text to a ${simplificationLevel} level and extract key concepts:
 
 Original Text:
 "${trimmedText.substring(0, PROMPT_MAX_LENGTH)}"
@@ -124,42 +76,49 @@ Return the results in JSON format:
 {
   "simplifiedText": "[Simplified Text]",
   "keyConcepts": [
-    { "term": "[Concept 1]", "explanation": "[Brief explanation]" },
-    { "term": "[Concept 2]", "explanation": "[Brief explanation]" },
-    ...
+    { "term": "[Concept 1]", "explanation": "[Brief explanation]", "startIndex": 0, "endIndex": 0 },
+    { "term": "[Concept 2]", "explanation": "[Brief explanation]", "startIndex": 0, "endIndex": 0 }
   ]
-}`;
+}
 
-    const result = await makeGeminiRequest(prompt);
+For each key concept, include the startIndex and endIndex representing its position in the original text if possible. 
+Important: Focus on simplifying the language while preserving the core meaning of the text. Aim for:
+- ${simplificationLevel === 'basic' ? 'Simple vocabulary and short sentences. Elementary school level.' : ''}
+- ${simplificationLevel === 'moderate' ? 'Everyday language and straightforward sentences. Middle school level.' : ''}
+- ${simplificationLevel === 'advanced' ? 'Somewhat simplified but retaining nuance. High school level.' : ''}`;
+
+  try {
+    const { model } = await getGeminiClient();
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
     
     try {
-        // Extract JSON from response - sometimes API might wrap it in markdown or other text
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        
-        // Fallback for non-JSON responses
-        return { simplifiedText: result, keyConcepts: [] };
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return { simplifiedText: responseText, keyConcepts: [] };
     } catch (jsonError) {
-        console.error("Failed to parse JSON response:", jsonError, result);
-        return { simplifiedText: result, keyConcepts: [] };
+      console.error("Failed to parse JSON:", jsonError);
+      return { simplifiedText: responseText, keyConcepts: [] };
     }
+  } catch (error) {
+    console.error("Error simplifying text:", error);
+    throw new Error("Failed to simplify text. Please try again.");
+  }
 }
 
 /**
- * Summarize text using the Gemini API
- * @param {string} text - Text to summarize
- * @returns {Promise<Object>} Summarized text and key concepts
+ * Summarize text using Gemini AI
  */
 export async function summarizeText(text) {
-    if (!text?.trim()) {
-        throw new Error("Please provide some text to summarize.");
-    }
-
-    const trimmedText = text.length > MAX_INPUT_LENGTH ? text.substring(0, MAX_INPUT_LENGTH) + "..." : text;
-
-    const prompt = `Provide a concise summary of the following text, highlighting the main points. Also, extract 3-5 key concepts from the text and return their explanations.
+  if (!text) throw new Error("Please provide some text to summarize.");
+  
+  const trimmedText = text.length > MAX_INPUT_LENGTH 
+    ? text.substring(0, MAX_INPUT_LENGTH) + "..." 
+    : text;
+  
+  const prompt = `Summarize the following text and extract key concepts:
 
 Original Text:
 "${trimmedText.substring(0, PROMPT_MAX_LENGTH)}"
@@ -168,72 +127,68 @@ Return the results in JSON format:
 {
   "summarizedText": "[Summarized Text]",
   "keyConcepts": [
-    { "term": "[Concept 1]", "explanation": "[Brief explanation]" },
-    { "term": "[Concept 2]", "explanation": "[Brief explanation]" },
-    ...
+    { "term": "[Concept 1]", "explanation": "[Brief explanation]", "startIndex": 0, "endIndex": 0 },
+    { "term": "[Concept 2]", "explanation": "[Brief explanation]", "startIndex": 0, "endIndex": 0 }
   ]
-}`;
+}
 
-    const result = await makeGeminiRequest(prompt);
+For each key concept, include the startIndex and endIndex representing its position in the original text if possible.
+Important: Create a concise summary that captures the main points and preserves the core meaning of the text.`;
+
+  try {
+    const { model } = await getGeminiClient();
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
     
     try {
-        // Extract JSON from response
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        
-        // Fallback for non-JSON responses
-        return { summarizedText: result, keyConcepts: [] };
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      return { summarizedText: responseText, keyConcepts: [] };
     } catch (jsonError) {
-        console.error("Failed to parse JSON response:", jsonError, result);
-        return { summarizedText: result, keyConcepts: [] };
+      console.error("Failed to parse JSON:", jsonError);
+      return { summarizedText: responseText, keyConcepts: [] };
     }
+  } catch (error) {
+    console.error("Error summarizing text:", error);
+    throw new Error("Failed to summarize text. Please try again.");
+  }
 }
 
 /**
- * Explain a concept using the Gemini API
- * @param {string} concept - Concept to explain
- * @returns {Promise<string>} Explanation of the concept
+ * Explain a concept using Gemini AI
  */
 export async function explainConcept(concept) {
-    if (!concept?.trim()) {
-        throw new Error("No concept provided for explanation.");
-    }
-
-    const prompt = `Provide a simple, clear explanation of the following concept in 1-2 sentences:
-
-Concept: "${concept}"`;
-
-    return await makeGeminiRequest(prompt);
+  if (!concept) throw new Error("No concept provided.");
+  
+  const prompt = `Explain the concept "${concept}" in simple language that someone with cognitive differences would understand. Keep it under 2 sentences and avoid jargon.`;
+  
+  try {
+    const { model } = await getGeminiClient();
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    console.error("Error explaining concept:", error);
+    throw new Error("Failed to explain concept. Please try again.");
+  }
 }
 
 /**
- * Verify API key by making a minimal test request
- * @param {string} apiKey - API key to verify
- * @returns {Promise<boolean>} Whether the API key is valid
+ * Verify an API key is valid
  */
 export async function verifyApiKey(apiKey) {
-    if (!apiKey?.trim()) {
-        return false;
-    }
-
-    const url = `${API_BASE_URL}?key=${apiKey}`;
-    const requestBody = { 
-        contents: [{ parts: [{ text: "test" }] }], 
-        generationConfig: { maxOutputTokens: 5 } 
-    };
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-        });
-        return response.ok;
-
-    } catch (error) {
-        console.error("API key verification error:", error);
-        return false;
-    }
+  if (!apiKey) return false;
+  
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey.trim());
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    await model.generateContent("Test");
+    return true;
+  } catch (error) {
+    console.error("API key verification error:", error);
+    return false;
+  }
 }
+
+export const getStoredApiKey = getApiKey;

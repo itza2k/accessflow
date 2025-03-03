@@ -1,256 +1,194 @@
 import { simplifyText, summarizeText, explainConcept } from './api.js';
-import SpeechHandler from './speech.js';
-import { loadSettings, applySettings } from './settings.js';
 
-// Initialize speech handler
-const speechHandler = new SpeechHandler();
-
-// Process text with a specific mode (simplify or summarize)
-async function processText(text, mode, simplificationLevel = 'moderate') {
+/**
+ * Process text with the selected mode and return result
+ * 
+ * @param {string} text - Text to process
+ * @param {string} mode - Processing mode ('simplify' or 'summarize')
+ * @param {string} simplificationLevel - Level of simplification 
+ * @returns {Promise<Object>} Processed result
+ */
+export async function processText(text, mode, simplificationLevel = 'moderate') {
   try {
-    if (!text || text.trim().length === 0) {
-      throw new Error("Please provide some text to process.");
-    }
+    if (!text) throw new Error(`Please enter some text to ${mode}.`);
     
+    // Choose processing method based on mode
     let result;
     if (mode === 'simplify') {
       result = await simplifyText(text, simplificationLevel);
-    } else if (mode === 'summarize') {
-      result = await summarizeText(text);
     } else {
-      throw new Error("Invalid processing mode");
+      result = await summarizeText(text);
     }
     
     return result;
   } catch (error) {
-    console.error("Error processing text:", error);
+    console.error(`Error processing text in ${mode} mode:`, error);
     throw error;
   }
 }
 
-// Display processed text with key concepts
-function displayProcessedText(result, container, outputContainer, keyConceptsContainer) {
-  // Get the processed text from the result
-  const processedText = result.simplifiedText || result.summarizedText || '';
+/**
+ * Display processed text in the UI
+ * 
+ * @param {Object} result - The processed text result
+ * @param {Element} outputContainer - The container for output
+ * @param {Element} outputText - The element to display processed text
+ * @param {Element} keyConceptsContainer - The element to display key concepts
+ */
+export function displayProcessedText(result, outputContainer, outputText, keyConceptsContainer) {
+  // Clear previous content
+  if (outputText) {
+    const processedText = result.simplifiedText || result.summarizedText || '';
+    outputText.innerHTML = processedText;
+  }
   
-  // Clear existing content
-  outputContainer.innerHTML = '';
-  keyConceptsContainer.innerHTML = '';
-  
-  // Display the processed text
-  outputContainer.textContent = processedText;
-  
-  // Display key concepts if available
-  if (result.keyConcepts && result.keyConcepts.length > 0) {
+  if (keyConceptsContainer && result.keyConcepts && result.keyConcepts.length > 0) {
+    // Create key concepts heading
     const heading = document.createElement('h3');
     heading.textContent = 'Key Concepts';
     keyConceptsContainer.appendChild(heading);
     
+    // Create list of key concepts
     const list = document.createElement('ul');
     list.className = 'key-concepts-list';
     
-    result.keyConcepts.forEach((concept) => {
+    // Add each concept with explanation button
+    result.keyConcepts.forEach(concept => {
       const item = document.createElement('li');
       
-      // Create the concept term
       const term = document.createElement('span');
       term.className = 'key-concept-term';
       term.textContent = concept.term;
-      item.appendChild(term);
       
-      // Create the explain button
-      const explainBtn = document.createElement('button');
-      explainBtn.className = 'key-concept-explain';
-      explainBtn.textContent = '?';
-      explainBtn.setAttribute('aria-label', `Explain ${concept.term}`);
-      explainBtn.dataset.concept = concept.term;
-      explainBtn.dataset.explanation = concept.explanation || '';
-      
-      // Add click handler for explanation
-      explainBtn.addEventListener('click', async (e) => {
+      const explainButton = document.createElement('button');
+      explainButton.className = 'key-concept-explain';
+      explainButton.innerHTML = '?';
+      explainButton.setAttribute('aria-label', `Explain ${concept.term}`);
+      explainButton.addEventListener('click', async (e) => {
         try {
-          let explanation = e.target.dataset.explanation;
+          // Replace button with loading indicator
+          const originalContent = explainButton.innerHTML;
+          explainButton.innerHTML = '...';
+          explainButton.disabled = true;
           
-          // If no pre-cached explanation, fetch one
-          if (!explanation) {
-            const conceptTerm = e.target.dataset.concept;
-            explanation = await explainConcept(conceptTerm);
-            e.target.dataset.explanation = explanation;
-          }
+          // Get explanation for the concept
+          const explanation = await explainConcept(concept.term);
           
-          showExplanation(explanation, e.target);
+          // Show tooltip with explanation
+          showExplanationTooltip(concept.term, explanation || concept.explanation, explainButton);
+          
+          // Reset button
+          explainButton.innerHTML = originalContent;
+          explainButton.disabled = false;
+          
         } catch (error) {
-          console.error("Failed to get explanation:", error);
-          showExplanation("Unable to load explanation.", e.target);
+          console.error('Error explaining concept:', error);
+          
+          // Reset button and show error
+          explainButton.innerHTML = '!';
+          explainButton.disabled = false;
+          setTimeout(() => {
+            explainButton.innerHTML = '?';
+          }, 2000);
         }
       });
       
-      item.appendChild(explainBtn);
+      item.appendChild(term);
+      item.appendChild(explainButton);
       list.appendChild(item);
     });
     
     keyConceptsContainer.appendChild(list);
+    
+    // Show the output actions if present
+    const outputActions = document.getElementById('output-actions');
+    if (outputActions) {
+      outputActions.style.display = 'flex';
+    }
   }
-  
-  // Apply settings to the container
-  loadSettings().then(settings => {
-    applySettings(settings, container);
-  });
-  
-  return outputContainer;
 }
 
-// Show explanation tooltip
-function showExplanation(explanation, targetElement) {
-  // Remove any existing tooltip
-  const existingTooltip = document.querySelector('.accessflow-tooltip');
-  if (existingTooltip) {
-    existingTooltip.remove();
-  }
+/**
+ * Shows a tooltip with concept explanation
+ * 
+ * @param {string} concept - The concept being explained
+ * @param {string} explanation - The explanation text
+ * @param {Element} anchor - Element to position the tooltip near
+ */
+function showExplanationTooltip(concept, explanation, anchor) {
+  // Remove any existing tooltips
+  const existingTooltips = document.querySelectorAll('.accessflow-tooltip');
+  existingTooltips.forEach(tooltip => tooltip.remove());
   
-  // Create tooltip
+  // Create tooltip element
   const tooltip = document.createElement('div');
   tooltip.className = 'accessflow-tooltip';
-  tooltip.textContent = explanation;
   
-  // Position tooltip near the target element
+  // Create tooltip content
+  const conceptHeading = document.createElement('strong');
+  conceptHeading.textContent = concept;
+  
+  const explanationText = document.createElement('p');
+  explanationText.textContent = explanation;
+  
+  const closeButton = document.createElement('button');
+  closeButton.className = 'tooltip-close';
+  closeButton.innerHTML = '×';
+  closeButton.setAttribute('aria-label', 'Close explanation');
+  
+  // Add content to tooltip
+  tooltip.appendChild(closeButton);
+  tooltip.appendChild(conceptHeading);
+  tooltip.appendChild(explanationText);
+  
+  // Position tooltip
   document.body.appendChild(tooltip);
+  const anchorRect = anchor.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
   
-  const targetRect = targetElement.getBoundingClientRect();
-  tooltip.style.left = `${targetRect.left}px`;
-  tooltip.style.top = `${targetRect.bottom + 5}px`;
+  // Position tooltip according to available space
+  const tooltipTop = anchorRect.top - tooltipRect.height - 5;
+  const tooltipLeft = Math.max(10, anchorRect.left - (tooltipRect.width / 2) + (anchorRect.width / 2));
   
-  // Add close button
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'tooltip-close';
-  closeBtn.textContent = '×';
-  closeBtn.setAttribute('aria-label', 'Close explanation');
-  closeBtn.addEventListener('click', () => tooltip.remove());
-  tooltip.appendChild(closeBtn);
+  tooltip.style.top = `${tooltipTop < 10 ? anchorRect.bottom + 5 : tooltipTop}px`;
+  tooltip.style.left = `${tooltipLeft}px`;
   
-  // Auto-remove after 15 seconds
+  // Add event listeners
+  closeButton.addEventListener('click', () => {
+    tooltip.remove();
+  });
+  
+  // Auto-remove after a delay
   setTimeout(() => {
     if (document.body.contains(tooltip)) {
       tooltip.remove();
     }
-  }, 15000);
+  }, 6000);
+  
+  // Also close on click outside
+  document.addEventListener('click', (e) => {
+    if (!tooltip.contains(e.target) && e.target !== anchor) {
+      tooltip.remove();
+    }
+  }, { once: true });
 }
 
-// Handle read aloud functionality
-function setupReadAloud(textElement, settings) {
-  // Configure speech handler with user settings
-  speechHandler.setOptions({
-    rate: settings.readAloudSpeed,
-    voice: settings.readAloudVoice ? speechHandler.getVoices().find(v => v.name === settings.readAloudVoice) : null
-  });
+/**
+ * Create a notification message
+ * 
+ * @param {string} message - Message to display
+ * @param {string} type - Type of notification ('success', 'error', 'info')
+ */
+export function showNotification(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.className = `accessflow-feedback ${type}`;
+  notification.textContent = message;
   
-  // Create play/pause and stop buttons
-  const playBtn = document.createElement('button');
-  playBtn.textContent = '🔊 Read Aloud';
-  playBtn.className = 'accessflow-read-aloud-btn';
-  playBtn.setAttribute('aria-label', 'Read text aloud');
+  document.body.appendChild(notification);
   
-  const stopBtn = document.createElement('button');
-  stopBtn.textContent = '⏹ Stop';
-  stopBtn.className = 'accessflow-stop-btn';
-  stopBtn.setAttribute('aria-label', 'Stop reading');
-  stopBtn.style.display = 'none';
-  
-  // Add click handlers
-  playBtn.addEventListener('click', () => {
-    playBtn.style.display = 'none';
-    stopBtn.style.display = 'inline-block';
-    speechHandler.speak(textElement);
-  });
-  
-  stopBtn.addEventListener('click', () => {
-    stopBtn.style.display = 'none';
-    playBtn.style.display = 'inline-block';
-    speechHandler.stop();
-  });
-  
-  // Add buttons before the text element
-  textElement.parentNode.insertBefore(stopBtn, textElement);
-  textElement.parentNode.insertBefore(playBtn, textElement);
+  setTimeout(() => {
+    if (document.body.contains(notification)) {
+      notification.remove();
+    }
+  }, 3000);
 }
-
-// Set up the main AccessFlow functionality for the demo page
-function setupAccessFlow() {
-  const inputText = document.querySelector('#input-text');
-  const simplifyBtn = document.querySelector('#simplify-btn');
-  const summarizeBtn = document.querySelector('#summarize-btn');
-  const outputText = document.querySelector('#output-text');
-  const keyConcepts = document.querySelector('#key-concepts');
-  const container = document.querySelector('.accessflow-container');
-  
-  if (!inputText || !simplifyBtn || !summarizeBtn || !outputText || !keyConcepts) {
-    console.error("Required elements not found");
-    return;
-  }
-  
-  // Load user settings
-  loadSettings().then(settings => {
-    // Apply settings to the UI
-    applySettings(settings, container);
-    
-    // Simplify button handler
-    simplifyBtn.addEventListener('click', async () => {
-      const text = inputText.value.trim();
-      if (!text) {
-        outputText.innerHTML = '<div class="accessflow-error">Please enter some text to simplify.</div>';
-        return;
-      }
-      
-      try {
-        simplifyBtn.disabled = true;
-        simplifyBtn.textContent = 'Processing...';
-        
-        outputText.innerHTML = '<div class="accessflow-loading"></div>';
-        keyConcepts.innerHTML = '';
-        
-        const result = await processText(text, 'simplify', settings.simplificationLevel);
-        const processedOutput = displayProcessedText(result, container, outputText, keyConcepts);
-        
-        // Set up read aloud for the processed text
-        setupReadAloud(processedOutput, settings);
-      } catch (error) {
-        outputText.innerHTML = `<div class="accessflow-error">${error.message}</div>`;
-        keyConcepts.innerHTML = '';
-      } finally {
-        simplifyBtn.disabled = false;
-        simplifyBtn.textContent = 'Simplify';
-      }
-    });
-    
-    // Summarize button handler
-    summarizeBtn.addEventListener('click', async () => {
-      const text = inputText.value.trim();
-      if (!text) {
-        outputText.innerHTML = '<div class="accessflow-error">Please enter some text to summarize.</div>';
-        return;
-      }
-      
-      try {
-        summarizeBtn.disabled = true;
-        summarizeBtn.textContent = 'Processing...';
-        
-        outputText.innerHTML = '<div class="accessflow-loading"></div>';
-        keyConcepts.innerHTML = '';
-        
-        const result = await processText(text, 'summarize');
-        const processedOutput = displayProcessedText(result, container, outputText, keyConcepts);
-        
-        // Set up read aloud for the processed text
-        setupReadAloud(processedOutput, settings);
-      } catch (error) {
-        outputText.innerHTML = `<div class="accessflow-error">${error.message}</div>`;
-        keyConcepts.innerHTML = '';
-      } finally {
-        summarizeBtn.disabled = false;
-        summarizeBtn.textContent = 'Summarize';
-      }
-    });
-  });
-}
-
-export { setupAccessFlow, processText, displayProcessedText };

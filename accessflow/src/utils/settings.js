@@ -1,95 +1,102 @@
 /**
  * Default settings for AccessFlow
  */
-export const DEFAULT_SETTINGS = {
-  simplificationLevel: 'moderate',  // easy, moderate, minimal
-  fontSize: 16,                    // in px
-  fontFamily: 'default',           // default, serif, sans-serif, monospace
-  lineSpacing: 'normal',           // normal, loose, tight
-  readAloudSpeed: 1.0,             // 0.5 to 2.0
-  highlightColor: '#FFD700',       // color for highlighting key concepts
-  darkMode: false                  // dark mode toggle
+const DEFAULT_SETTINGS = {
+  simplificationLevel: 'moderate', // basic, moderate, advanced
+  fontSize: 'medium', // small, medium, large
+  fontFamily: 'default', // default, serif, sans-serif, dyslexic
+  highContrast: false,
+  readAloudSpeed: 1.0,
+  autoCopyToClipboard: false,
+  saveHistory: true,
+  maxHistoryItems: 10
 };
 
 /**
- * Load user settings from storage
- * @returns {Object} User settings
+ * Save settings to Chrome storage
+ * @param {Object} settings - Settings to save
+ * @returns {Promise} Promise resolving when settings are saved
  */
-export async function loadSettings() {
+export function saveSettings(settings) {
   return new Promise((resolve) => {
-    chrome.storage.local.get('accessflow_settings', (result) => {
-      const settings = result.accessflow_settings || {};
-      resolve({ ...DEFAULT_SETTINGS, ...settings });
+    chrome.storage.local.set({ 
+      'accessflow_settings': {
+        ...DEFAULT_SETTINGS,
+        ...settings
+      }
+    }, () => {
+      resolve();
     });
   });
 }
 
 /**
- * Save user settings to storage
- * @param {Object} settings - User settings
- * @returns {Promise} Promise that resolves when settings are saved
+ * Load settings from Chrome storage
+ * @returns {Promise<Object>} Promise resolving with settings
  */
-export async function saveSettings(settings) {
+export async function loadSettings() {
   return new Promise((resolve) => {
-    chrome.storage.local.set(
-      { 'accessflow_settings': { ...settings } }, 
-      () => resolve(settings)
-    );
+    chrome.storage.local.get('accessflow_settings', (result) => {
+      const settings = result.accessflow_settings || {};
+      resolve({
+        ...DEFAULT_SETTINGS,
+        ...settings
+      });
+    });
   });
 }
 
 /**
- * Apply settings to a container element
- * @param {Object} settings - User settings to apply
- * @param {Element} container - DOM element to apply settings to
+ * Apply settings to the UI
+ * @param {Object} settings - Settings to apply
+ * @param {Element} container - Container to apply settings to
  */
 export function applySettings(settings, container) {
   if (!container) return;
   
-  // Font size
-  container.style.fontSize = `${settings.fontSize}px`;
+  // Apply font size
+  switch (settings.fontSize) {
+    case 'small':
+      container.style.fontSize = '0.9rem';
+      break;
+    case 'medium':
+      container.style.fontSize = '1rem';
+      break;
+    case 'large':
+      container.style.fontSize = '1.2rem';
+      break;
+  }
   
-  // Font family
+  // Apply font family
   switch (settings.fontFamily) {
+    case 'default':
+      container.style.fontFamily = '"Inter", sans-serif';
+      break;
     case 'serif':
-      container.style.fontFamily = 'Georgia, Times, serif';
+      container.style.fontFamily = '"Georgia", serif';
       break;
     case 'sans-serif':
-      container.style.fontFamily = 'Arial, Helvetica, sans-serif';
+      container.style.fontFamily = '"Arial", sans-serif';
       break;
-    case 'monospace':
-      container.style.fontFamily = 'Consolas, "Courier New", monospace';
+    case 'dyslexic':
+      // Add OpenDyslexic font if not already added
+      if (!document.getElementById('dyslexic-font')) {
+        const link = document.createElement('link');
+        link.id = 'dyslexic-font';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/opendyslexic@1.0.3/dist/opendyslexic.min.css';
+        document.head.appendChild(link);
+      }
+      container.style.fontFamily = '"OpenDyslexic", sans-serif';
+      container.style.letterSpacing = '0.05em';
+      container.style.wordSpacing = '0.15em';
       break;
-    default:
-      container.style.fontFamily = 'inherit';
   }
   
-  // Line spacing
-  switch (settings.lineSpacing) {
-    case 'loose':
-      container.style.lineHeight = '1.8';
-      break;
-    case 'tight':
-      container.style.lineHeight = '1.2';
-      break;
-    default:
-      container.style.lineHeight = '1.5';
-  }
-  
-  // Dark mode
-  if (settings.darkMode) {
-    container.classList.add('dark-mode');
+  // Apply high contrast
+  if (settings.highContrast) {
+    container.classList.add('high-contrast');
   } else {
-    container.classList.remove('dark-mode');
+    container.classList.remove('high-contrast');
   }
-  
-  // Custom highlight color for key concepts
-  const style = document.getElementById('accessflow-custom-styles') || document.createElement('style');
-  style.id = 'accessflow-custom-styles';
-  style.textContent = `
-    .key-concept-term.highlight {
-      background-color: ${settings.highlightColor};
-    }
-  `;
-  document.head.appendChild(style);
 }

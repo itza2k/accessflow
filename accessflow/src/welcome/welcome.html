@@ -8,80 +8,63 @@
 </head>
 <body>
   <div class="welcome-container">
-    <div class="welcome-header">
-      <img src="icons/icon128.png" alt="AccessFlow Logo" class="welcome-logo">
-      <div>
-        <h1 class="welcome-title">Welcome to AccessFlow</h1>
-        <p class="welcome-subtitle">AI-powered simplification and accessibility for web content</p>
-      </div>
-    </div>
+    <header>
+      <img src="icons/icon128.png" alt="AccessFlow Logo" class="logo">
+      <h1>Welcome to AccessFlow</h1>
+    </header>
     
-    <div class="welcome-step">
-      <h2>Step 1: Set up your API key</h2>
-      <p>AccessFlow uses Google's Gemini API to process text. You'll need to provide your own API key to use this extension.</p>
+    <main>
+      <section class="intro">
+        <h2>Making the web more accessible</h2>
+        <p>AccessFlow leverages AI to transform complex web content into more understandable formats for users with cognitive differences.</p>
+      </section>
       
-      <div class="api-key-input">
-        <input type="password" id="api-key-input" placeholder="Enter your Gemini API key here">
-        <button id="save-api-key">Save Key</button>
-      </div>
+      <section class="features">
+        <h2>Key Features</h2>
+        <div class="feature-grid">
+          <div class="feature">
+            <div class="feature-icon">🔄</div>
+            <h3>Simplify Text</h3>
+            <p>Transform complex text into simpler language while preserving meaning.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">📝</div>
+            <h3>Summarize Content</h3>
+            <p>Get concise summaries of long articles and complex documents.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🔍</div>
+            <h3>Key Concepts</h3>
+            <p>Identify and explain important terms and concepts in the text.</p>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🔊</div>
+            <h3>Read Aloud</h3>
+            <p>Listen to text being read aloud with adjustable reading speed.</p>
+          </div>
+        </div>
+      </section>
       
-      <div id="api-key-status"></div>
-      
-      <p class="api-key-help">
-        Don't have an API key? Get a free API key from 
-        <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>
-      </p>
-    </div>
+      <section class="getting-started">
+        <h2>Getting Started</h2>
+        <ol>
+          <li>Set up your Gemini API key in the extension settings</li>
+          <li>Select text on any webpage</li>
+          <li>Right-click and select "Process with AccessFlow" or use the keyboard shortcut</li>
+          <li>Choose to simplify or summarize the selected text</li>
+        </ol>
+        <div class="action-buttons">
+          <button id="setup-api-key" class="primary-button">Set Up API Key</button>
+          <button id="open-extension" class="secondary-button">Open Extension</button>
+        </div>
+      </section>
+    </main>
     
-    <div class="welcome-step">
-      <h2>Step 2: Explore Features</h2>
-      <p>AccessFlow helps you understand web content better with these features:</p>
-      
-      <div class="features">
-        <div class="feature-card">
-          <div class="feature-icon">📝</div>
-          <h3>Simplify Text</h3>
-          <p>Make complex content easier to understand with AI-powered simplification.</p>
-        </div>
-        
-        <div class="feature-card">
-          <div class="feature-icon">📚</div>
-          <h3>Summarize Content</h3>
-          <p>Get quick summaries of long articles and documents.</p>
-        </div>
-        
-        <div class="feature-card">
-          <div class="feature-icon">🔑</div>
-          <h3>Key Concepts</h3>
-          <p>Identify and explain important terms and concepts from the text.</p>
-        </div>
-        
-        <div class="feature-card">
-          <div class="feature-icon">🔊</div>
-          <h3>Read Aloud</h3>
-          <p>Listen to simplified content with text-to-speech capabilities.</p>
-        </div>
-      </div>
-    </div>
-    
-    <div class="welcome-step">
-      <h2>Step 3: Get Started</h2>
-      <p>Using AccessFlow is easy:</p>
-      <ol>
-        <li>Select text on any webpage</li>
-        <li>Right-click and choose "Process with AccessFlow" or use the keyboard shortcut <strong>Ctrl+Shift+A</strong></li>
-        <li>Choose to simplify or summarize the content</li>
-        <li>Explore key concepts and use read aloud features</li>
-      </ol>
-      
-      <div class="welcome-buttons">
-        <button id="get-started" class="welcome-button secondary">Get Started</button>
-        <button id="open-extension" class="welcome-button secondary">Open Settings</button>
-        <button id="start-using" class="welcome-button">Start Using AccessFlow</button>
-      </div>
-    </div>
+    <footer>
+      <p>AccessFlow v1.0.0 &copy; 2024</p>
+    </footer>
   </div>
   
-  <script src="welcome.js"></script>
+  <script type="module" src="assets/welcome.js"></script>
 </body>
 </html>

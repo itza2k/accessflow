@@ -3,47 +3,62 @@
 <head>
   <title>AccessFlow</title>
   <meta charset="UTF-8">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../utils/compatibility.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="accessflow-popup">
     <header class="accessflow-header">
       <div class="logo-container">
-        <img src="../icons/icon48.png" alt="AccessFlow Logo" class="accessflow-logo">
+        <img src="icons/icon48.png" alt="AccessFlow Logo" class="accessflow-logo">
         <h1>AccessFlow</h1>
       </div>
-      <div class="mode-toggle">
-        <input type="checkbox" id="dark-mode-toggle" class="toggle-checkbox">
-        <label for="dark-mode-toggle" class="toggle-label">
-          <span class="toggle-inner"></span>
-          <span class="toggle-switch"></span>
-        </label>
+      <div class="theme-switcher">
+        <button id="theme-btn" aria-label="Switch theme" class="icon-button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+          </svg>
+        </button>
       </div>
     </header>
     
     <nav class="accessflow-tabs">
-      <div class="accessflow-tab active" data-tab="process">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M14 3v2H4v13.385L5.763 17H20v-7h2v8a1 1 0 0 1-1 1H6.455L2 22.5V4a1 1 0 0 1 1-1h11zm5 0V0l5 5h-4v3h-2V5h-2V3h3z"/></svg>
-        Process Text
-      </div>
-      <div class="accessflow-tab" data-tab="settings">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3.34 17a10.018 10.018 0 0 1-.978-2.326 3 3 0 0 0 .002-5.347A9.99 9.99 0 0 1 4.865 4.99a3 3 0 0 0 4.631-2.674 9.99 9.99 0 0 1 5.007.002 3 3 0 0 0 4.632 2.672c.579.59 1.093 1.261 1.525 2.01.433.749.757 1.53.978 2.326a3 3 0 0 0-.002 5.347 9.99 9.99 0 0 1-2.501 4.337 3 3 0 0 0-4.631 2.674 9.99 9.99 0 0 1-5.007-.002 3 3 0 0 0-4.632-2.672A10.018 10.018 0 0 1 3.34 17zm5.66.196a4.993 4.993 0 0 1 2.25 2.77c.499.047 1 .048 1.499.001A4.993 4.993 0 0 1 15 17.197a4.993 4.993 0 0 1 3.525-.565c.29-.408.54-.843.748-1.298A4.993 4.993 0 0 1 18 12c0-1.26.47-2.437 1.273-3.334a8.126 8.126 0 0 0-.75-1.298A4.993 4.993 0 0 1 15 6.804a4.993 4.993 0 0 1-2.25-2.77c-.499-.047-1-.048-1.499-.001A4.993 4.993 0 0 1 9 6.803a4.993 4.993 0 0 1-3.525.565 7.99 7.99 0 0 0-.748 1.298A4.993 4.993 0 0 1 6 12c0 1.26-.47 2.437-1.273 3.334a8.126 8.126 0 0 0 .75 1.298A4.993 4.993 0 0 1 9 17.196zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-2a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
-        Settings
-      </div>
-      <div class="accessflow-tab" data-tab="help">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-5h2v2h-2v-2zm2-1.645V14h-2v-1.5a1 1 0 0 1 1-1 1.5 1.5 0 1 0-1.471-1.794l-1.962-.393A3.5 3.5 0 1 1 13 13.355z"/></svg>
-        Help
-      </div>
+      <button class="accessflow-tab active" data-tab="process" aria-selected="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M14 3v2H4v13.385L5.763 17H20v-7h2v8a1 1 0 0 1-1 1H6.455L2 22.5V4a1 1 0 0 1 1-1h11z"/>
+        </svg>
+        <span>Process</span>
+      </button>
+      <button class="accessflow-tab" data-tab="history" aria-selected="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12h2a8 8 0 1 0 8-8V0z"/>
+          <path d="M13 12V7h-2v7h6v-2h-4z"/>
+        </svg>
+        <span>History</span>
+      </button>
+      <button class="accessflow-tab" data-tab="settings" aria-selected="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-6.343 3.301C4.23 15.126 3 12.76 3 10c0-4.97 4.03-9 9-9s9 4.03 9 9-4.03 9-9 9c-2.76 0-5.26-1.23-6.93-3.17l-1.703 1.703A.97.97 0 0 1 2 16.17V12h4.17c.27 0 .52.11.7.29l.83.84A6.98 6.98 0 0 0 12 15c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5a5 5 0 0 0 1.17 3.17l-.84.83a1 1 0 0 1-.7.29H2.83z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+      <button class="accessflow-tab" data-tab="help" aria-selected="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+          <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-5h2v2h-2v-2zm2-1.645V14h-2v-1.5a1 1 0 0 1 1-1 1.5 1.5 0 1 0-1.471-1.794l-1.962-.393A3.5 3.5 0 1 1 13 13.355z"/>
+        </svg>
+        <span>Help</span>
+      </button>
     </nav>
     
-    <div class="accessflow-content">
+    <main class="accessflow-content">
       <!-- Process Text Section -->
-      <div id="process-section" class="accessflow-section active">
+      <section id="process-section" class="accessflow-section active" aria-hidden="false">
         <div id="api-key-missing" class="notice warning" style="display:none;">
           <div class="notice-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-5h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
+              <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-1-5h2v2h-2v-2zm0-8h2v6h-2V7z"/>
+            </svg>
           </div>
           <div class="notice-content">
             <p>Please set your Gemini API key in the Settings tab before using AccessFlow.</p>
@@ -52,40 +67,73 @@
         </div>
         
         <div id="process-controls">
-          <p class="section-label">Input Text</p>
           <div class="input-container">
+            <label for="input-text" class="section-label">Input Text</label>
             <textarea id="input-text" aria-label="Enter text to process" placeholder="Paste text here or select text on any webpage and use the right-click menu."></textarea>
           </div>
           
           <div class="controls">
             <button id="simplify-btn" class="process-button">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M13 16.172l-3.536-3.536 1.415-1.414 2.12 2.122 5.657-5.657 1.414 1.414L13 16.172zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/></svg>
-              Simplify
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+                <path d="M13 16.172l-3.536-3.536 1.415-1.414 2.12 2.122 5.657-5.657 1.414 1.414L13 16.172zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/>
+              </svg>
+              <span>Simplify</span>
             </button>
             <button id="summarize-btn" class="process-button">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 15h14v2H3v-2zm0-5h18v2H3v-2zm0-5h14v2H3V9z"/></svg>
-              Summarize
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
+                <path d="M3 4h18v2H3V4zm0 15h14v2H3v-2zm0-5h18v2H3v-2zm0-5h14v2H3V9z"/>
+              </svg>
+              <span>Summarize</span>
             </button>
           </div>
           
           <div id="output-container" class="output-container">
             <p class="section-label">Output</p>
             <div id="output-text" aria-live="polite" class="output"></div>
+            <div class="output-actions" id="output-actions" style="display: none;">
+              <button id="copy-btn" class="action-button" aria-label="Copy to clipboard">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M7 6V3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3zm0 2H5v12h10V8H7zm2-2V4h10v12h-2V8a1 1 0 0 0-1-1H9z"/>
+                </svg>
+                <span>Copy</span>
+              </button>
+              <button id="share-btn" class="action-button" aria-label="Share">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M13.576 17.271l-5.11-2.787a3.5 3.5 0 0 1-4.5 4.5 3.5 3.5 0 0 1 4.5-4.5l5.11-2.787a3.5 3.5 0 0 1 .52-1.658l-5.11-2.787a3.5 3.5 0 0 1-4.5-4.5 3.5 3.5 0 0 1 4.5 4.5l5.11 2.787a3.5 3.5 0 1 1-.52 7.232zm.5-1.732a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+                </svg>
+                <span>Share</span>
+              </button>
+              <button id="export-btn" class="action-button" aria-label="Export as PDF">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M2.859 2.877l12.57-1.795a.5.5 0 0 1 .571.495v20.846a.5.5 0 0 1-.57.495L2.858 21.123a1 1 0 0 1-.859-.99V3.867a1 1 0 0 1 .859-.99zM4 4.735v14.53l10 1.429V3.306L4 4.735zM17 19h3V5h-3V3h4a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-4v-2zm-6.8-7l2.8 4h-2.4L9 13.714 7.4 16H5l2.8-4L5 8h2.4L9 10.286 10.6 8H13l-2.8 4z"/>
+                </svg>
+                <span>Export</span>
+              </button>
+            </div>
             <div id="key-concepts" aria-label="Key concepts" class="key-concepts"></div>
           </div>
         </div>
-      </div>
+      </section>
+      
+      <!-- History Section -->
+      <section id="history-section" class="accessflow-section" aria-hidden="true">
+        <h2>Processing History</h2>
+        <div id="history-container" class="history-container">
+          <p class="empty-state">Your processing history will appear here</p>
+        </div>
+        <button id="clear-history" class="accessflow-button secondary">Clear History</button>
+      </section>
       
       <!-- Settings Section -->
-      <div id="settings-section" class="accessflow-section">
+      <section id="settings-section" class="accessflow-section" aria-hidden="true">
         <div id="settings-container">
           <!-- Settings will be populated by JS -->
           <div class="accessflow-loading"></div>
         </div>
-      </div>
+      </section>
       
       <!-- Help Section -->
-      <div id="help-section" class="accessflow-section">
+      <section id="help-section" class="accessflow-section" aria-hidden="true">
         <h2>How to Use AccessFlow</h2>
         <div class="help-card">
           <div class="help-icon">1</div>
@@ -125,13 +173,13 @@
         </ul>
         
         <div class="version-info">
-          <p>AccessFlow v1.0</p>
-          <a href="https://github.com/yourusername/accessflow" target="_blank">View on GitHub</a>
+          <p>AccessFlow v1.0.0</p>
+          <a href="https://github.com/itza2k/accessflow" target="_blank" rel="noopener">View on GitHub</a>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
   
-  <script src="popup.js" type="module"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

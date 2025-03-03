@@ -1,59 +1,61 @@
 /**
- * SpeechHandler - A class to manage text-to-speech functionality
+ * Speech handler for text-to-speech functionality
  */
 export default class SpeechHandler {
-  constructor() {
-    this.synth = window.speechSynthesis;
+  constructor(options = {}) {
+    this.speaking = false;
+    this.paused = false;
     this.utterance = null;
-    this.isPaused = false;
-    this.isReading = false;
-    this.textElement = null;
-    this.currentWordIndex = 0;
-    this.words = [];
+    this.currentElement = null;
     this.options = {
       rate: 1.0,
       pitch: 1.0,
       volume: 1.0,
-      voice: null
+      ...options
     };
+    
+    // Check if speech synthesis is available
+    this.available = 'speechSynthesis' in window;
+    
+    if (this.available) {
+      // Initialize speech synthesis
+      this.synth = window.speechSynthesis;
+    }
   }
-
-  /**
-   * Get available voices
-   */
-  getVoices() {
-    return this.synth.getVoices();
-  }
-
+  
   /**
    * Set speech options
-   * @param {Object} options - Speech options (rate, pitch, volume, voice)
+   * @param {Object} options - Speech options (rate, pitch, volume)
    */
-  setOptions(options = {}) {
-    this.options = { ...this.options, ...options };
-    return this;
+  setOptions(options) {
+    this.options = {
+      ...this.options,
+      ...options
+    };
+    
+    if (this.utterance && this.speaking) {
+      // Update current utterance if speaking
+      this.utterance.rate = this.options.rate;
+      this.utterance.pitch = this.options.pitch;
+      this.utterance.volume = this.options.volume;
+    }
   }
-
+  
   /**
-   * Speak text from a DOM element
-   * @param {Element} element - The DOM element containing text to read
+   * Speak the text content of an element
+   * @param {Element} element - Element containing text to read
    */
   speak(element) {
-    if (!element || this.isReading) return;
-
-    this.textElement = element;
-    this.isReading = true;
+    if (!this.available || !element) return;
+    
+    // Stop any current speech
+    this.stop();
+    
+    this.currentElement = element;
     const text = element.textContent;
     
-    // Split text into words
-    this.words = text.split(/\s+/);
-    this.currentWordIndex = 0;
-
-    if (this.words.length === 0) {
-      this.isReading = false;
-      return;
-    }
-
+    if (!text.trim()) return;
+    
     // Create utterance
     this.utterance = new SpeechSynthesisUtterance(text);
     
@@ -62,133 +64,102 @@ export default class SpeechHandler {
     this.utterance.pitch = this.options.pitch;
     this.utterance.volume = this.options.volume;
     
-    if (this.options.voice) {
-      this.utterance.voice = this.options.voice;
-    }
-
-    // Set event listeners
-    this.utterance.onend = () => {
-      this.stop();
-    };
-
-    this.utterance.onboundary = (event) => {
-      // Only process word boundaries
-      if (event.name !== 'word') return;
-      
-      // Get the word index
-      this.currentWordIndex = this.getWordIndexFromCharIndex(event.charIndex);
-      
-      // Highlight current word
-      this.highlightCurrentWord();
-    };
-
-    // Clear any existing highlights
-    this.clearHighlights();
+    // Set up event handlers for highlighting
+    this.setupHighlighting();
+    
+    // Set flag
+    this.speaking = true;
+    this.paused = false;
     
     // Start speaking
     this.synth.speak(this.utterance);
   }
-
-  /**
-   * Get word index from character index
-   * @param {number} charIndex - Index of character in text
-   * @returns {number} Word index
-   */
-  getWordIndexFromCharIndex(charIndex) {
-    let text = this.textElement.textContent;
-    let charCount = 0;
-    let wordIndex = 0;
-    
-    const words = text.split(/\s+/);
-    
-    for (let i = 0; i < words.length; i++) {
-      charCount += words[i].length + 1; // +1 for space
-      if (charCount > charIndex) {
-        wordIndex = i;
-        break;
-      }
-    }
-    
-    return wordIndex;
-  }
-
-  /**
-   * Highlight the current word being spoken
-   */
-  highlightCurrentWord() {
-    // Clear existing highlights
-    this.clearHighlights();
-    
-    // Create text nodes and highlight spans
-    const text = this.textElement.textContent;
-    const words = text.split(/\s+/);
-    
-    // Clear element
-    this.textElement.innerHTML = '';
-    
-    // Rebuild content with highlight
-    for (let i = 0; i < words.length; i++) {
-      const wordSpan = document.createElement('span');
-      wordSpan.textContent = words[i];
-      
-      if (i === this.currentWordIndex) {
-        wordSpan.classList.add('accessflow-highlight');
-      }
-      
-      this.textElement.appendChild(wordSpan);
-      
-      // Add space between words (except last word)
-      if (i < words.length - 1) {
-        this.textElement.appendChild(document.createTextNode(' '));
-      }
-    }
-  }
-
-  /**
-   * Clear all highlights
-   */
-  clearHighlights() {
-    if (this.textElement) {
-      const highlights = this.textElement.querySelectorAll('.accessflow-highlight');
-      highlights.forEach(el => {
-        el.classList.remove('accessflow-highlight');
-      });
-    }
-  }
-
+  
   /**
    * Stop speaking
    */
   stop() {
+    if (!this.available || !this.speaking) return;
+    
     this.synth.cancel();
-    this.isReading = false;
-    this.isPaused = false;
-    this.clearHighlights();
-
-    // Restore original text formatting
-    if (this.textElement) {
-      const text = this.textElement.textContent;
-      this.textElement.textContent = text;
-    }
+    this.speaking = false;
+    this.paused = false;
+    this.utterance = null;
+    
+    // Remove any highlighting
+    this.removeHighlighting();
   }
-
+  
   /**
-   * Pause speaking
+   * Pause speech
    */
   pause() {
-    if (this.isReading && !this.isPaused) {
-      this.synth.pause();
-      this.isPaused = true;
-    }
+    if (!this.available || !this.speaking || this.paused) return;
+    
+    this.synth.pause();
+    this.paused = true;
   }
-
+  
   /**
-   * Resume speaking
+   * Resume speech
    */
   resume() {
-    if (this.isReading && this.isPaused) {
-      this.synth.resume();
-      this.isPaused = false;
+    if (!this.available || !this.speaking || !this.paused) return;
+    
+    this.synth.resume();
+    this.paused = false;
+  }
+  
+  /**
+   * Toggle pause/resume
+   */
+  togglePause() {
+    if (this.paused) {
+      this.resume();
+    } else {
+      this.pause();
     }
+  }
+  
+  /**
+   * Set up word highlighting during speech
+   */
+  setupHighlighting() {
+    if (!this.utterance || !this.currentElement) return;
+    
+    // Since we can't reliably highlight words during speech with the basic API,
+    // we'll provide visual indication that the text is being read in other ways
+    this.currentElement.classList.add('being-read');
+    
+    // End event
+    this.utterance.onend = () => {
+      this.removeHighlighting();
+      this.speaking = false;
+      this.paused = false;
+      this.utterance = null;
+      
+      // Dispatch custom event when reading is complete
+      const event = new CustomEvent('accessflow-reading-complete', { 
+        bubbles: true 
+      });
+      this.currentElement.dispatchEvent(event);
+    };
+    
+    // Error event
+    this.utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      this.removeHighlighting();
+      this.speaking = false;
+      this.utterance = null;
+    };
+  }
+  
+  /**
+   * Remove highlighting
+   */
+  removeHighlighting() {
+    if (!this.currentElement) return;
+    
+    this.currentElement.classList.remove('being-read');
   }
 }
