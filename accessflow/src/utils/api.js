@@ -4,22 +4,37 @@ const API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/ge
 const MAX_INPUT_LENGTH = 10000;
 const PROMPT_MAX_LENGTH = 5000;
 
-async function getApiKey() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get('accessflow_api_key', (result) => {
-            resolve(result.accessflow_api_key || '');
-        });
+/**
+ * Get API key from storage
+ * @returns {Promise<string>} The API key
+ */
+export async function getApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('accessflow_api_key', (result) => {
+      resolve(result.accessflow_api_key || '');
     });
+  });
 }
 
-async function saveApiKey(apiKey) {
-    return new Promise((resolve) => {
-        chrome.storage.local.set({ 'accessflow_api_key': apiKey }, () => {
-            resolve(); 
-        });
+/**
+ * Save API key to storage
+ * @param {string} apiKey - The API key to save
+ * @returns {Promise} Promise that resolves when API key is saved
+ */
+export async function saveApiKey(apiKey) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ 'accessflow_api_key': apiKey }, () => {
+      resolve(); 
     });
+  });
 }
 
+/**
+ * Make a request to  Gemini API
+ * @param {string} prompt - The prompt to send to the API
+ * @param {Object} generationConfig - Configuration for text generation
+ * @returns {Promise<string>} API response text
+ */
 async function makeGeminiRequest(prompt, generationConfig = {
     temperature: 0.2,
     topK: 40,
@@ -63,7 +78,7 @@ async function makeGeminiRequest(prompt, generationConfig = {
 
         const data = await response.json();
 
-        // error form gemini
+        // Handle potential errors from the Gemini API itself
         if (data.error) {
             throw new Error(`Gemini API Error: ${data.error.message} (code ${data.error.code})`);
         }
@@ -87,7 +102,13 @@ async function makeGeminiRequest(prompt, generationConfig = {
     }
 }
 
-async function simplifyText(text, simplificationLevel = "moderate") {
+/**
+ * Simplify text using the Gemini API
+ * @param {string} text - Text to simplify
+ * @param {string} simplificationLevel - Level of simplification (easy, moderate, minimal)
+ * @returns {Promise<Object>} Simplified text and key concepts
+ */
+export async function simplifyText(text, simplificationLevel = "moderate") {
     if (!text?.trim()) {
         throw new Error("Please provide some text to simplify.");
     }
@@ -110,7 +131,6 @@ Return the results in JSON format:
 }`;
 
     const result = await makeGeminiRequest(prompt);
-    console.log("Simplification result received");
     
     try {
         // Extract JSON from response - sometimes API might wrap it in markdown or other text
@@ -127,7 +147,12 @@ Return the results in JSON format:
     }
 }
 
-async function summarizeText(text) {
+/**
+ * Summarize text using the Gemini API
+ * @param {string} text - Text to summarize
+ * @returns {Promise<Object>} Summarized text and key concepts
+ */
+export async function summarizeText(text) {
     if (!text?.trim()) {
         throw new Error("Please provide some text to summarize.");
     }
@@ -150,23 +175,28 @@ Return the results in JSON format:
 }`;
 
     const result = await makeGeminiRequest(prompt);
-    console.log("Summarization result received");
     
     try {
-        // Extract the json
+        // Extract JSON from response
         const jsonMatch = result.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             return JSON.parse(jsonMatch[0]);
         }
         
+        // Fallback for non-JSON responses
         return { summarizedText: result, keyConcepts: [] };
-    } catch (jsonError) {// non json fallback
+    } catch (jsonError) {
         console.error("Failed to parse JSON response:", jsonError, result);
         return { summarizedText: result, keyConcepts: [] };
     }
 }
 
-async function explainConcept(concept) {
+/**
+ * Explain a concept using the Gemini API
+ * @param {string} concept - Concept to explain
+ * @returns {Promise<string>} Explanation of the concept
+ */
+export async function explainConcept(concept) {
     if (!concept?.trim()) {
         throw new Error("No concept provided for explanation.");
     }
@@ -178,8 +208,12 @@ Concept: "${concept}"`;
     return await makeGeminiRequest(prompt);
 }
 
-
-async function verifyApiKey(apiKey) { // verify api
+/**
+ * Verify API key by making a minimal test request
+ * @param {string} apiKey - API key to verify
+ * @returns {Promise<boolean>} Whether the API key is valid
+ */
+export async function verifyApiKey(apiKey) {
     if (!apiKey?.trim()) {
         return false;
     }
@@ -196,12 +230,10 @@ async function verifyApiKey(apiKey) { // verify api
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),
         });
-        return response.ok; // True if 200-299 otherwise false 
+        return response.ok;
 
     } catch (error) {
         console.error("API key verification error:", error);
         return false;
     }
 }
-
-export { simplifyText, summarizeText, explainConcept, getApiKey, saveApiKey, verifyApiKey };
