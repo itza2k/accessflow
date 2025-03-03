@@ -8,6 +8,10 @@ import SpeechHandler from '../utils/speech.js';
 const speechHandler = new SpeechHandler();
 
 document.addEventListener('DOMContentLoaded', async function() {
+  // Set proper dimensions for the popup
+  document.documentElement.style.width = '450px';
+  document.documentElement.style.height = '550px';
+  
   // Dark mode toggle
   const darkModeToggle = document.getElementById('dark-mode-toggle');
   if (darkModeToggle) {
