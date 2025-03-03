@@ -1,14 +1,21 @@
 {
   "name": "accessflow",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "prebuild": "node scripts/create-icons.cjs && node scripts/copy-assets.cjs",
+    "build": "vite build && cp public/manifest.json dist/ && cp dist/welcome.js dist/",
+    "watch": "vite build --watch",
+    "package": "cd dist && zip -r ../accessflow.zip .",
+    "build:package": "npm run build && npm run package",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:watch": "vitest --watch"
   },
   "devDependencies": {
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^1.2.0"
   }
 }
