@@ -1,195 +1,16 @@
-import { processText, displayProcessedText, processWithMode } from '../utils/dom.js';
-import { initSettingsPanel } from './settings.js';
-import { loadSettings, applySettings } from '../utils/settings.js';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '../utils/settings.js';
 import { getApiKey, saveApiKey, verifyApiKey } from '../utils/api.js';
-import SpeechHandler from '../utils/speech.js';
-
-// Initialize speech handler
-const speechHandler = new SpeechHandler();
-
-document.addEventListener('DOMContentLoaded', async function() {
-  // Handle dark mode toggle
-  const darkModeToggle = document.getElementById('dark-mode-toggle');
-  
-  if (darkModeToggle) {
-    // Check for saved theme preference or use system preference
-    const savedTheme = localStorage.getItem('accessflow-theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.body.classList.add('dark-mode');
-      darkModeToggle.checked = true;
-    }
-    
-    // Handle theme switch
-    darkModeToggle.addEventListener('change', () => {
-      if (darkModeToggle.checked) {
-        document.body.classList.add('dark-mode');
-        localStorage.setItem('accessflow-theme', 'dark');
-      } else {
-        document.body.classList.remove('dark-mode');
-        localStorage.setItem('accessflow-theme', 'light');
-      }
-    });
-  }
-
-  // Handle tab switching
-  const tabs = document.querySelectorAll('.accessflow-tab');
-  if (tabs) {
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        // Remove active class from all tabs and sections
-        document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-        
-        // Add active class to clicked tab and corresponding section
-        tab.classList.add('active');
-        const tabName = tab.dataset.tab;
-        const section = document.getElementById(`${tabName}-section`);
-        if (section) section.classList.add('active');
-      });
-    });
-  }
-
-  // Initialize settings panel
-  await initSettingsPanel();
-  
-  // Check if we should open settings tab directly (from welcome page)
-  chrome.storage.local.get('accessflow_open_settings', (result) => {
-    if (result.accessflow_open_settings) {
-      // Switch to settings tab
-      document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-      
-      const settingsTab = document.querySelector('.accessflow-tab[data-tab="settings"]');
-      const settingsSection = document.getElementById('settings-section');
-      
-      if (settingsTab) settingsTab.classList.add('active');
-      if (settingsSection) settingsSection.classList.add('active');
-      
-      // Clear the flag
-      chrome.storage.local.remove('accessflow_open_settings');
-    }
-  });
-  
-  // Check if API key is set
-  const apiKey = await getApiKey();
-  const apiKeyMissing = document.getElementById('api-key-missing');
-  const processControls = document.getElementById('process-controls');
-  
-  if (!apiKey && apiKeyMissing && processControls) {
-    apiKeyMissing.style.display = 'block';
-    processControls.style.display = 'none';
-  } else if (apiKeyMissing && processControls) {
-    apiKeyMissing.style.display = 'none';
-    processControls.style.display = 'block';
-  }
-  
-  // Go to settings button
-  const gotoSettings = document.getElementById('goto-settings');
-  if (gotoSettings) {
-    gotoSettings.addEventListener('click', () => {
-      document.querySelectorAll('.accessflow-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.accessflow-section').forEach(s => s.classList.remove('active'));
-      
-      const settingsTab = document.querySelector('.accessflow-tab[data-tab="settings"]');
-      const settingsSection = document.getElementById('settings-section');
-      
-      if (settingsTab) settingsTab.classList.add('active');
-      if (settingsSection) settingsSection.classList.add('active');
-    });
-  }
-  
-  // Check for stored text from background script
-  chrome.storage.local.get('accessflow_selected_text', (result) => {
-    if (result.accessflow_selected_text) {
-      const inputText = document.getElementById('input-text');
-      if (inputText) {
-        inputText.value = result.accessflow_selected_text;
-        // Clear stored text
-        chrome.storage.local.remove('accessflow_selected_text');
-      }
-    }
-  });
-  
-  // Load user settings
-  const settings = await loadSettings();
-  applySettings(settings, document.body);
-  
-  // Set up simplify button
-  const simplifyBtn = document.getElementById('simplify-btn');
-  if (simplifyBtn) {
-    simplifyBtn.addEventListener('click', async () => {
-      processWithMode('simplify', settings);
-    });
-  }
-  
-  // Set up summarize button
-  const summarizeBtn = document.getElementById('summarize-btn');
-  if (summarizeBtn) {
-    summarizeBtn.addEventListener('click', async () => {
-      processWithMode('summarize', settings);
-    });
-  }
-  
-  // Handle keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    // Alt+S - Simplify
-    if (e.altKey && e.key.toLowerCase() === 's') {
-      e.preventDefault();
-      processWithMode('simplify', settings);
-    }
-    
-    // Alt+M - Summarize
-    if (e.altKey && e.key.toLowerCase() === 'm') {
-      e.preventDefault();
-      processWithMode('summarize', settings);
-    }
-  });
-  
-  // Set up read aloud functionality
-  setupReadAloud(settings);
-});
-
-/**
- * Set up read aloud functionality
- */
-function setupReadAloud(settings) {
-  // Configure speech handler with settings
-  speechHandler.setOptions({
-    rate: settings.readAloudSpeed || 1.0,
-    volume: 1.0
-  });
-  
-  // Add event listener for Alt+R keyboard shortcut
-  document.addEventListener('keydown', (e) => {
-    // Alt+R - Read aloud
-    if (e.altKey && e.key.toLowerCase() === 'r') {
-      e.preventDefault();
-      const outputText = document.getElementById('output-text');
-      if (outputText && outputText.textContent.trim()) {
-        const existingReadButton = document.querySelector('.accessflow-read-aloud-btn');
-        if (existingReadButton && existingReadButton.style.display !== 'none') {
-          existingReadButton.click();
-        } else {
-          const existingStopButton = document.querySelector('.accessflow-stop-btn');
-          if (existingStopButton && existingStopButton.style.display !== 'none') {
-            existingStopButton.click();
-          }
-        }
-      }
-    }
-  });
-}
 
 /**
  * Initialize the settings panel
  */
-async function initSettingsPanel() {
+export async function initSettingsPanel() {
   const settingsContainer = document.getElementById('settings-container');
   if (!settingsContainer) return;
   
   const settings = await loadSettings();
   
-  // Create settings UI
+  // the settign ui
   settingsContainer.innerHTML = `
     <h2>Settings</h2>
     
@@ -245,16 +66,16 @@ async function initSettingsPanel() {
     </div>
   `;
   
-  // Get API key and populate field
+  // populate from the api key
   const apiKey = await getApiKey();
   const apiKeyInput = document.getElementById('apiKey');
   if (apiKeyInput && apiKey) {
     apiKeyInput.value = '********';
   }
   
-  // Save API key
+  
   const saveApiKeyBtn = document.getElementById('saveApiKey');
-  if (saveApiKeyBtn) {
+  if (saveApiKeyBtn) { //save the key
     saveApiKeyBtn.addEventListener('click', async () => {
       const apiKeyInput = document.getElementById('apiKey');
       const apiKeyStatus = document.getElementById('api-key-status');
@@ -277,7 +98,7 @@ async function initSettingsPanel() {
           await saveApiKey(newApiKey);
           apiKeyStatus.innerHTML = '<span class="status-success">API key saved successfully</span>';
           
-          // Update the API key missing notice if present
+          // update for cases
           const apiKeyMissingNotice = document.getElementById('api-key-missing');
           const processControls = document.getElementById('process-controls');
           
@@ -295,7 +116,7 @@ async function initSettingsPanel() {
     });
   }
   
-  // Update font size label when slider changes
+  // font sizze change
   const fontSizeSlider = document.getElementById('fontSize');
   if (fontSizeSlider) {
     fontSizeSlider.addEventListener('input', () => {
@@ -306,18 +127,18 @@ async function initSettingsPanel() {
     });
   }
   
-  // Update read aloud speed label when slider changes
+  
   const readAloudSpeedSlider = document.getElementById('readAloudSpeed');
   if (readAloudSpeedSlider) {
     readAloudSpeedSlider.addEventListener('input', () => {
-      const label = document.querySelector('label[for="readAloudSpeed"]');
+      const label = document.querySelector('label[for="readAloudSpeed"]');//aloud speaker
       if (label) {
         label.textContent = `Read Aloud Speed: ${readAloudSpeedSlider.value}x`;
       }
     });
   }
   
-  // Save settings
+  // save
   const saveSettingsBtn = document.getElementById('saveSettings');
   if (saveSettingsBtn) {
     saveSettingsBtn.addEventListener('click', async () => {
@@ -341,18 +162,15 @@ async function initSettingsPanel() {
           feedback.remove();
         }, 3000);
         
-        // Apply settings immediately
+        // Apply settings
         applySettings(newSettings, document.body);
-        
-        // Update speech handler options
-        speechHandler.setOptions({ rate: newSettings.readAloudSpeed });
       } catch (error) {
         console.error('Error saving settings:', error);
       }
     });
   }
   
-  // Reset settings
+  // revert reset
   const resetSettingsBtn = document.getElementById('resetSettings');
   if (resetSettingsBtn) {
     resetSettingsBtn.addEventListener('click', async () => {
@@ -393,13 +211,10 @@ async function initSettingsPanel() {
           }
         }
         
-        // Apply default settings
+        //basic default settings
         applySettings(DEFAULT_SETTINGS, document.body);
         
-        // Update speech handler options
-        speechHandler.setOptions({ rate: DEFAULT_SETTINGS.readAloudSpeed });
-        
-        // Show feedback
+        // any feed back
         const feedback = document.createElement('div');
         feedback.className = 'accessflow-feedback';
         feedback.textContent = 'Settings reset to defaults';

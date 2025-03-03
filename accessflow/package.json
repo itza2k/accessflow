@@ -5,14 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/create-icons.cjs && node scripts/copy-assets.cjs",
-    "build": "vite build && cp public/manifest.json dist/ && cp dist/welcome.js dist/",
+    "prebuild": "node src/icons/create-icons.js",
+    "build": "vite build",
     "watch": "vite build --watch",
     "package": "cd dist && zip -r ../accessflow.zip .",
     "build:package": "npm run build && npm run package",
     "preview": "vite preview",
-    "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test": "vitest"
   },
   "devDependencies": {
     "vite": "^6.2.0",
