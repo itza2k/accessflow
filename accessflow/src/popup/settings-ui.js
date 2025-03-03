@@ -14,6 +14,7 @@ export async function initSettingsPanel(speechHandler) {
   // Get current settings
   const settings = await loadSettings();
   const apiKey = await getApiKey();
+  const voices = speechHandler.getVoices();
   
   // Create settings interface
   settingsContainer.innerHTML = `
@@ -56,10 +57,24 @@ export async function initSettingsPanel(speechHandler) {
         <option value="dyslexic" ${settings.fontFamily === 'dyslexic' ? 'selected' : ''}>OpenDyslexic</option>
       </select>
       
+      <label class="setting-label" for="line-spacing">Line Spacing</label>
+      <select id="line-spacing" class="setting-control">
+        <option value="normal" ${settings.lineSpacing === 'normal' ? 'selected' : ''}>Normal</option>
+        <option value="comfortable" ${settings.lineSpacing === 'comfortable' ? 'selected' : ''}>Comfortable (1.8x)</option>
+        <option value="wide" ${settings.lineSpacing === 'wide' ? 'selected' : ''}>Wide (2.2x)</option>
+      </select>
+      
       <div class="setting-checkbox">
         <input type="checkbox" id="high-contrast" ${settings.highContrast ? 'checked' : ''}>
         <label for="high-contrast">High Contrast Mode</label>
       </div>
+      
+      <label class="setting-label" for="highlight-color">Highlight Color</label>
+      <div class="color-picker-container">
+        <input type="color" id="highlight-color" value="${settings.highlightColor || '#4285F4'}" class="color-picker">
+        <span class="color-preview" style="background-color: ${settings.highlightColor || '#4285F4'}"></span>
+      </div>
+      <p class="setting-help">Color used for highlighting text during Read Aloud</p>
     </div>
     
     <div class="setting-group">
@@ -71,6 +86,16 @@ export async function initSettingsPanel(speechHandler) {
         <span>${settings.readAloudSpeed}x</span>
         <span>Fast</span>
       </div>
+      
+      <label class="setting-label" for="read-aloud-voice">Voice</label>
+      <select id="read-aloud-voice" class="setting-control">
+        <option value="">System Default</option>
+        ${voices.map(voice => `
+          <option value="${voice.name}" ${settings.readAloudVoice === voice.name ? 'selected' : ''}>
+            ${voice.name} (${voice.lang})
+          </option>
+        `).join('')}
+      </select>
       <button id="test-read-aloud" class="accessflow-button secondary">Test Read Aloud</button>
     </div>
     
@@ -173,11 +198,37 @@ function setupSettingsEventListeners(currentSettings, speechHandler) {
     });
   }
   
+  // Voice selection
+  const voiceSelect = document.getElementById('read-aloud-voice');
+  if (voiceSelect) {
+    voiceSelect.addEventListener('change', (e) => {
+      if (speechHandler) {
+        speechHandler.setOptions({ voiceName: e.target.value });
+      }
+    });
+  }
+  
+  // Highlight color
+  const highlightColor = document.getElementById('highlight-color');
+  if (highlightColor) {
+    highlightColor.addEventListener('input', (e) => {
+      const colorPreview = document.querySelector('.color-preview');
+      if (colorPreview) {
+        colorPreview.style.backgroundColor = e.target.value;
+      }
+      
+      // Update speech handler
+      if (speechHandler) {
+        speechHandler.setOptions({ highlightColor: e.target.value });
+      }
+    });
+  }
+  
   // Test read aloud
   document.getElementById('test-read-aloud')?.addEventListener('click', () => {
     if (speechHandler) {
       const testText = document.createElement('div');
-      testText.textContent = "This is a test of the AccessFlow read aloud feature. You can adjust the speed using the slider above.";
+      testText.textContent = "This is a test of the AccessFlow read aloud feature. You can adjust the speed and voice using the settings above.";
       speechHandler.stop(); // Stop any current speech
       speechHandler.speak(testText);
       showNotification('Testing read aloud...');
@@ -194,6 +245,12 @@ function setupSettingsEventListeners(currentSettings, speechHandler) {
   document.getElementById('font-family')?.addEventListener('change', (e) => {
     const fontFamily = e.target.value;
     const updatedSettings = { ...currentSettings, fontFamily };
+    applySettingChange(updatedSettings);
+  });
+  
+  document.getElementById('line-spacing')?.addEventListener('change', (e) => {
+    const lineSpacing = e.target.value;
+    const updatedSettings = { ...currentSettings, lineSpacing };
     applySettingChange(updatedSettings);
   });
   
@@ -256,8 +313,11 @@ function setupSettingsEventListeners(currentSettings, speechHandler) {
         simplificationLevel: document.getElementById('simplification-level')?.value || currentSettings.simplificationLevel,
         fontSize: document.getElementById('font-size')?.value || currentSettings.fontSize,
         fontFamily: document.getElementById('font-family')?.value || currentSettings.fontFamily,
+        lineSpacing: document.getElementById('line-spacing')?.value || currentSettings.lineSpacing,
         highContrast: document.getElementById('high-contrast')?.checked || false,
         readAloudSpeed: parseFloat(document.getElementById('read-aloud-speed')?.value) || currentSettings.readAloudSpeed,
+        readAloudVoice: document.getElementById('read-aloud-voice')?.value || '',
+        highlightColor: document.getElementById('highlight-color')?.value || currentSettings.highlightColor,
         autoCopyToClipboard: document.getElementById('auto-copy')?.checked || false,
         saveHistory: document.getElementById('save-history')?.checked || false,
         maxHistoryItems: parseInt(document.getElementById('max-history')?.value, 10) || currentSettings.maxHistoryItems
