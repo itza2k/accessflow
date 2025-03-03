@@ -1,24 +1,19 @@
 import './style.css'
-import javascriptLogo from './javascript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.js'
+import { setupAccessFlow } from './utils/dom.js'
 
 document.querySelector('#app').innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-      <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
-    </a>
-    <h1>Hello Vite!</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
+  <div class="accessflow-container">
+    <h1>AccessFlow</h1>
+    <div class="text-processor">
+      <textarea id="input-text" aria-label="Enter text to process"></textarea>
+      <div class="controls">
+        <button id="simplify-btn" aria-label="Simplify text">Simplify</button>
+        <button id="summarize-btn" aria-label="Summarize text">Summarize</button>
+      </div>
+      <div id="output-text" aria-live="polite" class="output"></div>
     </div>
-    <p class="read-the-docs">
-      Click on the Vite logo to learn more
-    </p>
+    <div id="key-concepts" aria-label="Key concepts" class="key-concepts"></div>
   </div>
 `
 
-setupCounter(document.querySelector('#counter'))
+setupAccessFlow()
